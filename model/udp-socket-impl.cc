@@ -575,7 +575,6 @@ UdpSocketImpl::GetSockName (Address &address) const
 int 
 UdpSocketImpl::MulticastJoinGroup (uint32_t interface, const Address &groupAddress)
 {
-  NS_LOG_FUNCTION (interface << groupAddress);
   /*
    1) sanity check interface
    2) sanity check that it has not been called yet on this interface/group
@@ -583,6 +582,14 @@ UdpSocketImpl::MulticastJoinGroup (uint32_t interface, const Address &groupAddre
    4) locally store a list of (interface, groupAddress)
    5) call ipv4->MulticastJoinGroup () or Ipv6->MulticastJoinGroup ()
   */
+//  NS_LOG_FUNCTION (interface << groupAddress);
+//  Ptr<Ipv4> ipv4 = m_node->GetObject<Ipv4> ();
+//  //1) sanity check interface
+//  NS_ASSERT(interface >= 0 && interface < ipv4->GetNInterfaces());
+//  //2) sanity check that it has not been called yet on this interface/group
+//  Ipv4Address group = Ipv4Address::ConvertFrom(groupAddress);
+//  Ptr<Ipv4EndPointDemux> demux = m_node->GetObject<Ipv4EndPointDemux> ();
+//  bool valid = demux->LookupLocal(group, 0);
   return 0;
 } 
 
