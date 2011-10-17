@@ -492,8 +492,8 @@ Ipv4L3Protocol::Receive ( Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t p
     bool done = false;
     for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end () && !done; ++i)
       {
-        NS_LOG_LOGIC ("Forwarding to raw socket "<< *i << " device "<< socket->GetBoundNetDevice() << " iDevice " << ipv4Interface->GetDevice());
         Ptr<Ipv4RawSocketImpl> socket = *i;
+        NS_LOG_LOGIC ("Forwarding to raw socket "<< socket << " device "<< socket->GetBoundNetDevice() << " iDevice " << ipv4Interface->GetDevice());
         if(socket->GetBoundNetDevice() == ipv4Interface->GetDevice())
       	  done = socket->ForwardUp (packet, ipHeader, ipv4Interface);
       }
