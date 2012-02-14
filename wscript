@@ -183,6 +183,7 @@ def build(bld):
         'helper/ipv6-address-helper.cc',
         'helper/ipv6-interface-container.cc',
         'helper/ipv6-routing-helper.cc',
+        'model/ipv6-address-generator.cc',
         ]
 
     internet_test = bld.create_ns3_module_test_library('internet')
@@ -193,6 +194,7 @@ def build(bld):
         'test/ipv4-list-routing-test-suite.cc',
         'test/ipv4-packet-info-tag-test-suite.cc',
         'test/ipv4-raw-test.cc',
+        'test/ipv4-header-test.cc',
         'test/ipv4-fragmentation-test.cc',
         'test/error-channel.cc',
         'test/error-net-device.cc',
@@ -203,6 +205,7 @@ def build(bld):
         'test/ipv6-test.cc',
         'test/tcp-test.cc',
         'test/udp-test.cc',
+        'test/ipv6-address-generator-test-suite.cc',
         ]
 
     headers = bld.new_task_gen(features=['ns3header'])
@@ -275,6 +278,7 @@ def build(bld):
         'helper/ipv6-address-helper.h',
         'helper/ipv6-interface-container.h',
         'helper/ipv6-routing-helper.h',
+        'model/ipv6-address-generator.h',
        ]
 
     if bld.env['NSC_ENABLED']:

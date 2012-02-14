@@ -1149,7 +1149,15 @@ Ipv4L3Protocol::DoFragmentation (Ptr<Packet> packet, uint32_t outIfaceMtu, std::
 
   uint16_t offset = 0;
   bool moreFragment = true;
+  uint16_t originalOffset = 0;
+  bool alreadyFragmented = false;
   uint32_t currentFragmentablePartSize = 0;
+
+  if (!ipv4Header.IsLastFragment())
+    {
+      alreadyFragmented = true;
+      originalOffset = ipv4Header.GetFragmentOffset();
+    }
 
   // IPv4 fragments are all 8 bytes aligned but the last.
   // The IP payload size is:
@@ -1172,15 +1180,27 @@ Ipv4L3Protocol::DoFragmentation (Ptr<Packet> packet, uint32_t outIfaceMtu, std::
         {
           moreFragment = false;
           currentFragmentablePartSize = p->GetSize () - offset;
-          fragmentHeader.SetLastFragment ();
+          if (alreadyFragmented)
+            {
+              fragmentHeader.SetMoreFragments ();
+            }
+          else
+            {
+              fragmentHeader.SetLastFragment ();
+            }
         }
 
       NS_LOG_LOGIC ("Fragment creation - " << offset << ", " << currentFragmentablePartSize  );
       Ptr<Packet> fragment = p->CreateFragment (offset, currentFragmentablePartSize);
       NS_LOG_LOGIC ("Fragment created - " << offset << ", " << fragment->GetSize ()  );
 
-      fragmentHeader.SetFragmentOffset (offset);
+      fragmentHeader.SetFragmentOffset (offset+originalOffset);
       fragmentHeader.SetPayloadSize (currentFragmentablePartSize);
+
+      if (Node::ChecksumEnabled ())
+        {
+          fragmentHeader.EnableChecksum ();
+        }
 
       NS_LOG_LOGIC ("Fragment check - " << fragmentHeader.GetFragmentOffset ()  );
 

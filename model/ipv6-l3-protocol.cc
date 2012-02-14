@@ -957,6 +957,8 @@ void Ipv6L3Protocol::LocalDeliver (Ptr<const Packet> packet, Ipv6Header const& i
       p->CopyData (buf, sizeof(buf));
       nextHeader = buf[0];
       nextHeaderPosition = buf[1];
+      NS_ASSERT_MSG (nextHeader != Ipv6Header::IPV6_EXT_HOP_BY_HOP, "Double Ipv6Header::IPV6_EXT_HOP_BY_HOP in packet, aborting");
+      NS_ASSERT_MSG (nextHeaderPosition != 0, "Zero-size IPv6 Option Header, aborting");
     }
 
   /* process all the extensions found and the layer 4 protocol */
@@ -966,12 +968,17 @@ void Ipv6L3Protocol::LocalDeliver (Ptr<const Packet> packet, Ipv6Header const& i
 
       if (ipv6Extension)
         {
-          nextHeaderPosition += ipv6Extension->Process (p, nextHeaderPosition, ip, dst, &nextHeader, isDropped);
+          uint8_t nextHeaderStep = 0;
+          uint8_t curHeader = nextHeader;
+          nextHeaderStep = ipv6Extension->Process (p, nextHeaderPosition, ip, dst, &nextHeader, isDropped);
+          nextHeaderPosition += nextHeaderStep;
 
           if (isDropped)
             {
               return;
             }
+          NS_ASSERT_MSG (nextHeaderStep != 0 || curHeader == Ipv6Header::IPV6_EXT_FRAGMENTATION,
+                         "Zero-size IPv6 Option Header, aborting" << *packet );
         }
       else
         {
