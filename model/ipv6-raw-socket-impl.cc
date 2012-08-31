@@ -122,6 +122,11 @@ int Ipv6RawSocketImpl::Bind ()
   return 0;
 }
 
+int Ipv6RawSocketImpl::Bind6 ()
+{
+  return(Bind());
+}
+
 int Ipv6RawSocketImpl::GetSockName (Address& address) const
 {
   NS_LOG_FUNCTION_NOARGS ();
@@ -333,7 +338,7 @@ bool Ipv6RawSocketImpl::ForwardUp (Ptr<const Packet> p, Ipv6Header hdr, Ptr<NetD
         }
 
       // Should check via getsockopt ()..
-      if (this->m_recvpktinfo)
+      if (IsRecvPktInfo ())
         {
           Ipv6PacketInfoTag tag;
           copy->RemovePacketTag (tag);

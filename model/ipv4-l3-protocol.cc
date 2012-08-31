@@ -36,7 +36,6 @@
 #include "loopback-net-device.h"
 #include "arp-l3-protocol.h"
 #include "ipv4-l3-protocol.h"
-#include "ipv4-l4-protocol.h"
 #include "icmpv4-l4-protocol.h"
 #include "ipv4-interface.h"
 #include "ipv4-raw-socket-impl.h"
@@ -98,11 +97,11 @@ Ipv4L3Protocol::~Ipv4L3Protocol ()
 }
 
 void
-Ipv4L3Protocol::Insert (Ptr<Ipv4L4Protocol> protocol)
+Ipv4L3Protocol::Insert (Ptr<IpL4Protocol> protocol)
 {
   m_protocols.push_back (protocol);
 }
-Ptr<Ipv4L4Protocol>
+Ptr<IpL4Protocol>
 Ipv4L3Protocol::GetProtocol (int protocolNumber) const
 {
   for (L4List_t::const_iterator i = m_protocols.begin (); i != m_protocols.end (); ++i)
@@ -115,7 +114,7 @@ Ipv4L3Protocol::GetProtocol (int protocolNumber) const
   return 0;
 }
 void
-Ipv4L3Protocol::Remove (Ptr<Ipv4L4Protocol> protocol)
+Ipv4L3Protocol::Remove (Ptr<IpL4Protocol> protocol)
 {
   m_protocols.remove (protocol);
 }
@@ -234,7 +233,7 @@ Ipv4L3Protocol::SetupLoopback (void)
   // First check whether an existing LoopbackNetDevice exists on the node
   for (uint32_t i = 0; i < m_node->GetNDevices (); i++)
     {
-      if (device = DynamicCast<LoopbackNetDevice> (m_node->GetDevice (i)))
+      if ((device = DynamicCast<LoopbackNetDevice> (m_node->GetDevice (i))))
         {
           break;
         }
@@ -268,7 +267,7 @@ Ipv4L3Protocol::SetDefaultTtl (uint8_t ttl)
 uint32_t 
 Ipv4L3Protocol::AddInterface (Ptr<NetDevice> device)
 {
-  NS_LOG_FUNCTION (this << &device);
+  NS_LOG_FUNCTION (this << device);
 
   Ptr<Node> node = GetObject<Node> ();
   node->RegisterProtocolHandler (MakeCallback (&Ipv4L3Protocol::Receive, this), 
@@ -435,7 +434,7 @@ void
 Ipv4L3Protocol::Receive ( Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t protocol, const Address &from,
                           const Address &to, NetDevice::PacketType packetType)
 {
-  NS_LOG_FUNCTION (this << &device << p << protocol <<  from);
+  NS_LOG_FUNCTION (this << device << p << protocol <<  from << to << packetType);
 
   NS_LOG_LOGIC ("Packet from " << from << " received on node " << 
                 m_node->GetId ());
@@ -486,28 +485,14 @@ Ipv4L3Protocol::Receive ( Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t p
       m_dropTrace (ipHeader, packet, DROP_BAD_CHECKSUM, m_node->GetObject<Ipv4> (), interface);
       return;
     }
-    // IPv4rawSocket are bind to just an IPAddress, not even a device.
-    //   Here we wanna first see whether this socket is bind to a device, and activating the receive on that device
-    //   Otherwise, if no devices have been selected, just try all the sockets as done by the official version.
-    bool done = false;
-    for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end () && !done; ++i)
-      {
-        Ptr<Ipv4RawSocketImpl> socket = *i;
-        NS_LOG_LOGIC ("Forwarding to raw socket "<< socket << " device "<< socket->GetBoundNetDevice() << " iDevice " << ipv4Interface->GetDevice());
-        if(socket->GetBoundNetDevice() == ipv4Interface->GetDevice())
-      	  done = socket->ForwardUp (packet, ipHeader, ipv4Interface);
-      }
 
-    for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end () && !done; ++i)
-    	// end modification
-// original
-//  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end (); ++i) // original
-    {// original
-      NS_LOG_LOGIC ("Forwarding to raw socket");// original
-      Ptr<Ipv4RawSocketImpl> socket = *i;// original
-      socket->ForwardUp (packet, ipHeader, ipv4Interface);// original
-    }// original
-// original
+  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end (); ++i)
+    {
+      NS_LOG_LOGIC ("Forwarding to raw socket"); 
+      Ptr<Ipv4RawSocketImpl> socket = *i;
+      socket->ForwardUp (packet, ipHeader, ipv4Interface);
+    }
+
   NS_ASSERT_MSG (m_routingProtocol != 0, "Need a routing protocol object to process packets");
   if (!m_routingProtocol->RouteInput (packet, ipHeader, device,
                                       MakeCallback (&Ipv4L3Protocol::IpForward, this),
@@ -519,14 +504,12 @@ Ipv4L3Protocol::Receive ( Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t p
       NS_LOG_WARN ("No route found for forwarding packet.  Drop.");
       m_dropTrace (ipHeader, packet, DROP_NO_ROUTE, m_node->GetObject<Ipv4> (), interface);
     }
-
-
 }
 
 Ptr<Icmpv4L4Protocol> 
 Ipv4L3Protocol::GetIcmp (void) const
 {
-  Ptr<Ipv4L4Protocol> prot = GetProtocol (Icmpv4L4Protocol::GetStaticProtocolNumber ());
+  Ptr<IpL4Protocol> prot = GetProtocol (Icmpv4L4Protocol::GetStaticProtocolNumber ());
   if (prot != 0)
     {
       return prot->GetObject<Icmpv4L4Protocol> ();
@@ -877,22 +860,22 @@ Ipv4L3Protocol::LocalDeliver (Ptr<const Packet> packet, Ipv4Header const&ip, uin
 
   m_localDeliverTrace (ip, packet, iif);
 
-  Ptr<Ipv4L4Protocol> protocol = GetProtocol (ip.GetProtocol ());
+  Ptr<IpL4Protocol> protocol = GetProtocol (ip.GetProtocol ());
   if (protocol != 0)
     {
       // we need to make a copy in the unlikely event we hit the
       // RX_ENDPOINT_UNREACH codepath
       Ptr<Packet> copy = p->Copy ();
-      enum Ipv4L4Protocol::RxStatus status = 
+      enum IpL4Protocol::RxStatus status = 
         protocol->Receive (p, ip, GetInterface (iif));
       switch (status) {
-        case Ipv4L4Protocol::RX_OK:
+        case IpL4Protocol::RX_OK:
         // fall through
-        case Ipv4L4Protocol::RX_ENDPOINT_CLOSED:
+        case IpL4Protocol::RX_ENDPOINT_CLOSED:
         // fall through
-        case Ipv4L4Protocol::RX_CSUM_FAILED:
+        case IpL4Protocol::RX_CSUM_FAILED:
           break;
-        case Ipv4L4Protocol::RX_ENDPOINT_UNREACH:
+        case IpL4Protocol::RX_ENDPOINT_UNREACH:
           if (ip.GetDestination ().IsBroadcast () == true ||
               ip.GetDestination ().IsMulticast () == true)
             {

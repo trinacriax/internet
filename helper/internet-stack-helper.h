@@ -178,6 +178,19 @@ public:
    */
   void SetIpv6StackInstall (bool enable);
 
+ /**
+  * Assign a fixed random variable stream number to the random variables
+  * used by this model.  Return the number of streams (possibly zero) that
+  * have been assigned.  The Install() method should have previously been
+  * called by the user.
+  *
+  * \param stream first stream index to use
+  * \param c NodeContainer of the set of nodes for which the internet models
+  *          should be modified to use a fixed stream
+  * \return the number of stream indices assigned by this helper
+  */
+  int64_t AssignStreams (NodeContainer c, int64_t stream);
+
 private:
   /**
    * @brief Enable pcap output the indicated Ipv4 and interface pair.
@@ -186,6 +199,7 @@ private:
    * @param prefix Filename prefix to use for pcap files.
    * @param ipv4 Ptr to the Ipv4 interface on which you want to enable tracing.
    * @param interface Interface ID on the Ipv4 on which you want to enable tracing.
+   * @param explicitFilename Treat the prefix as an explicit filename if true
    */
   virtual void EnablePcapIpv4Internal (std::string prefix, 
                                        Ptr<Ipv4> ipv4, 
@@ -201,6 +215,7 @@ private:
    * @param prefix Filename prefix to use for ascii trace files.
    * @param ipv4 Ptr to the Ipv4 interface on which you want to enable tracing.
    * @param interface Interface ID on the Ipv4 on which you want to enable tracing.
+   * @param explicitFilename Treat the prefix as an explicit filename if true
    */
   virtual void EnableAsciiIpv4Internal (Ptr<OutputStreamWrapper> stream, 
                                         std::string prefix, 
@@ -215,6 +230,7 @@ private:
    * @param prefix Filename prefix to use for pcap files.
    * @param ipv6 Ptr to the Ipv6 interface on which you want to enable tracing.
    * @param interface Interface ID on the Ipv6 on which you want to enable tracing.
+   * @param explicitFilename Treat the prefix as an explicit filename if true
    */
   virtual void EnablePcapIpv6Internal (std::string prefix, 
                                        Ptr<Ipv6> ipv6, 
@@ -230,6 +246,7 @@ private:
    * @param prefix Filename prefix to use for ascii trace files.
    * @param ipv6 Ptr to the Ipv6 interface on which you want to enable tracing.
    * @param interface Interface ID on the Ipv6 on which you want to enable tracing.
+   * @param explicitFilename Treat the prefix as an explicit filename if true
    */
   virtual void EnableAsciiIpv6Internal (Ptr<OutputStreamWrapper> stream, 
                                         std::string prefix, 

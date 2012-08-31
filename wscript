@@ -8,7 +8,7 @@ import Utils
 import Task
 
 # Required NSC version
-NSC_RELEASE_NAME = "nsc-0.5.2"
+NSC_RELEASE_NAME = "nsc-0.5.3"
 
 
 def options(opt):
@@ -94,7 +94,7 @@ def build(bld):
     # bridge and mpi dependencies are due to global routing
     obj = bld.create_ns3_module('internet', ['bridge', 'mpi', 'network', 'core'])
     obj.source = [
-        'model/ipv4-l4-protocol.cc',
+        'model/ip-l4-protocol.cc',
         'model/udp-header.cc',
         'model/tcp-header.cc',
         'model/ipv4-interface.cc',
@@ -122,7 +122,6 @@ def build(bld):
         'model/ipv6-l3-protocol.cc',
         'model/ipv6-end-point.cc',
         'model/ipv6-end-point-demux.cc',
-        'model/ipv6-l4-protocol.cc',
         'model/ipv6-raw-socket-factory-impl.cc',
         'model/ipv6-raw-socket-impl.cc',
         'model/ipv6-autoconfigured-prefix.cc',
@@ -206,6 +205,9 @@ def build(bld):
         'test/tcp-test.cc',
         'test/udp-test.cc',
         'test/ipv6-address-generator-test-suite.cc',
+        'test/ipv6-dual-stack-test-suite.cc',
+        'test/ipv6-fragmentation-test.cc',
+        'test/ipv6-address-helper-test-suite.cc',
         ]
 
     headers = bld.new_task_gen(features=['ns3header'])
@@ -220,17 +222,18 @@ def build(bld):
         'model/ipv4-l3-protocol.h',
         'model/ipv6-l3-protocol.h',
         'model/ipv4-end-point.h',
+        'model/ipv6-extension.h',
+        'model/ipv6-extension-demux.h',
         'model/ipv6-extension-header.h',
         'model/ipv6-option-header.h',
         'model/arp-l3-protocol.h',
         'model/udp-l4-protocol.h',
         'model/tcp-l4-protocol.h',
         'model/icmpv4-l4-protocol.h',
-        'model/ipv4-l4-protocol.h',
+        'model/ip-l4-protocol.h',
         'model/arp-header.h',
         'model/arp-cache.h',
         'model/icmpv6-l4-protocol.h',
-        'model/ipv6-l4-protocol.h',
         'model/ipv6-interface.h',
         'model/ndisc-cache.h',
         'model/loopback-net-device.h',

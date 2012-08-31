@@ -160,6 +160,7 @@ Ipv6AddressGeneratorImpl::Init (
   // network number at bit zero of the int that holds it).
   //
   uint32_t index = PrefixToIndex (prefix);
+  NS_LOG_DEBUG ("Index " << index);
   uint32_t a = m_netTable[index].shift / 8;
   uint32_t b = m_netTable[index].shift % 8;
   for (int32_t j = 15 - a; j >= 0; j--)
@@ -497,7 +498,7 @@ Ipv6AddressGeneratorImpl::PrefixToIndex (Ipv6Prefix prefix) const
   uint8_t prefixBits[16];
   prefix.GetBytes (prefixBits);
 
-  for (uint32_t i = 15; i >= 0; --i)
+  for (int32_t i = 15; i >= 0; --i)
     {
       for (uint32_t j = 0; j < 8; ++j)
         {
