@@ -491,7 +491,20 @@ Ipv4L3Protocol::Receive ( Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t p
       return;
     }
 
-  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end (); ++i)
+  // IPv4rawSocket are bind to just an IPAddress, not even a device.
+  //   Here we wanna first see whether this socket is bind to a device, and activating the receive on that device
+  //   Otherwise, if no devices have been selected, just try all the sockets as done by the official version.
+  bool done = false;
+  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end () && !done; ++i)
+    {
+      Ptr<Ipv4RawSocketImpl> socket = *i;
+      NS_LOG_LOGIC ("Forwarding to raw socket "<< socket << " device "<< socket->GetBoundNetDevice() << " iDevice " << ipv4Interface->GetDevice());
+      if(socket->GetBoundNetDevice() == ipv4Interface->GetDevice())
+    	  done = socket->ForwardUp (packet, ipHeader, ipv4Interface);
+    }
+
+  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end () && !done; ++i)
+  //for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end (); ++i)
     {
       NS_LOG_LOGIC ("Forwarding to raw socket"); 
       Ptr<Ipv4RawSocketImpl> socket = *i;
