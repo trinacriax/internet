@@ -93,6 +93,7 @@ private:
   CacheList m_cacheList;
   Ptr<Node> m_node;
   TracedCallback<Ptr<const Packet> > m_dropTrace;
+  TracedCallback<Ptr<const Packet> > m_txTrace;
 };
 
 } // namespace ns3

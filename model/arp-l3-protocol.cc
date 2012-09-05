@@ -52,6 +52,9 @@ ArpL3Protocol::GetTypeId (void)
     .AddTraceSource ("Drop",
                      "Packet dropped because not enough room in pending queue for a specific cache entry.",
                      MakeTraceSourceAccessor (&ArpL3Protocol::m_dropTrace))
+	.AddTraceSource ("TxArp",
+					"Packet dropped because not enough room in pending queue for a specific cache entry.",
+					MakeTraceSourceAccessor (&ArpL3Protocol::m_txTrace))
   ;
   return tid;
 }
@@ -326,6 +329,7 @@ ArpL3Protocol::SendArpRequest (Ptr<const ArpCache> cache, Ipv4Address to)
                 " || dst: " << device->GetBroadcast () << " / " << to);
   arp.SetRequest (device->GetAddress (), source, device->GetBroadcast (), to);
   packet->AddHeader (arp);
+  m_txTrace (packet);
   cache->GetDevice ()->Send (packet, device->GetBroadcast (), PROT_NUMBER);
 }
 
@@ -341,6 +345,7 @@ ArpL3Protocol::SendArpReply (Ptr<const ArpCache> cache, Ipv4Address myIp, Ipv4Ad
   arp.SetReply (cache->GetDevice ()->GetAddress (), myIp, toMac, toIp);
   Ptr<Packet> packet = Create<Packet> ();
   packet->AddHeader (arp);
+  m_txTrace (packet);
   cache->GetDevice ()->Send (packet, toMac, PROT_NUMBER);
 }
 
