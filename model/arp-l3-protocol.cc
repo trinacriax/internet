@@ -52,9 +52,9 @@ ArpL3Protocol::GetTypeId (void)
     .AddTraceSource ("Drop",
                      "Packet dropped because not enough room in pending queue for a specific cache entry.",
                      MakeTraceSourceAccessor (&ArpL3Protocol::m_dropTrace))
-	.AddTraceSource ("TxArp",
-					"Packet dropped because not enough room in pending queue for a specific cache entry.",
-					MakeTraceSourceAccessor (&ArpL3Protocol::m_txTrace))
+    .AddTraceSource ("TxArp",
+                     "Packet dropped because not enough room in pending queue for a specific cache entry.",
+                     MakeTraceSourceAccessor (&ArpL3Protocol::m_txTrace))
   ;
   return tid;
 }
