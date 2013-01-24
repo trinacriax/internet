@@ -54,6 +54,10 @@ Ipv4L3Protocol::GetTypeId (void)
   static TypeId tid = TypeId ("ns3::Ipv4L3Protocol")
     .SetParent<Ipv4> ()
     .AddConstructor<Ipv4L3Protocol> ()
+    .AddAttribute ("DefaultTos", "The TOS value set by default on all outgoing packets generated on this node.",
+                   UintegerValue (0),
+                   MakeUintegerAccessor (&Ipv4L3Protocol::m_defaultTos),
+                   MakeUintegerChecker<uint8_t> ())
     .AddAttribute ("DefaultTtl", "The TTL value set by default on all outgoing packets generated on this node.",
                    UintegerValue (64),
                    MakeUintegerAccessor (&Ipv4L3Protocol::m_defaultTtl),
@@ -87,6 +91,7 @@ Ipv4L3Protocol::GetTypeId (void)
 
 Ipv4L3Protocol::Ipv4L3Protocol()
   : m_identification (0)
+
 {
   NS_LOG_FUNCTION (this);
 }
@@ -486,20 +491,7 @@ Ipv4L3Protocol::Receive ( Ptr<NetDevice> device, Ptr<const Packet> p, uint16_t p
       return;
     }
 
-  // IPv4rawSocket are bind to just an IPAddress, not even a device.
-  //   Here we wanna first see whether this socket is bind to a device, and activating the receive on that device
-  //   Otherwise, if no devices have been selected, just try all the sockets as done by the official version.
-  bool done = false;
-  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end () && !done; ++i)
-    {
-      Ptr<Ipv4RawSocketImpl> socket = *i;
-      NS_LOG_LOGIC ("Forwarding to raw socket "<< socket << " device "<< socket->GetBoundNetDevice() << " iDevice " << ipv4Interface->GetDevice());
-      if(socket->GetBoundNetDevice() == ipv4Interface->GetDevice())
-    	  done = socket->ForwardUp (packet, ipHeader, ipv4Interface);
-    }
-
-  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end () && !done; ++i)
-  //for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end (); ++i)
+  for (SocketList::iterator i = m_sockets.begin (); i != m_sockets.end (); ++i)
     {
       NS_LOG_LOGIC ("Forwarding to raw socket"); 
       Ptr<Ipv4RawSocketImpl> socket = *i;
@@ -545,6 +537,10 @@ Ipv4L3Protocol::SendWithHeader (Ptr<Packet> packet,
                                 Ptr<Ipv4Route> route)
 {
   NS_LOG_FUNCTION (this << packet << ipHeader << route);
+  if (Node::ChecksumEnabled ())
+    {
+      ipHeader.EnableChecksum ();
+    }
   SendRealOut (route, packet, ipHeader);
 }
 
@@ -567,6 +563,14 @@ Ipv4L3Protocol::Send (Ptr<Packet> packet,
       ttl = tag.GetTtl ();
     }
 
+  uint8_t tos = m_defaultTos;
+  SocketIpTosTag ipTosTag;
+  found = packet->RemovePacketTag (ipTosTag);
+  if (found)
+    {
+      tos = ipTosTag.GetTos ();
+    }
+
   // Handle a few cases:
   // 1) packet is destined to limited broadcast address
   // 2) packet is destined to a subnet-directed broadcast address
@@ -578,7 +582,7 @@ Ipv4L3Protocol::Send (Ptr<Packet> packet,
   if (destination.IsBroadcast () || destination.IsLocalMulticast ())
     {
       NS_LOG_LOGIC ("Ipv4L3Protocol::Send case 1:  limited broadcast");
-      ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, mayFragment);
+      ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, tos, mayFragment);
       uint32_t ifaceIndex = 0;
       for (Ipv4InterfaceList::iterator ifaceIter = m_interfaces.begin ();
            ifaceIter != m_interfaces.end (); ifaceIter++, ifaceIndex++)
@@ -610,7 +614,7 @@ Ipv4L3Protocol::Send (Ptr<Packet> packet,
               destination.CombineMask (ifAddr.GetMask ()) == ifAddr.GetLocal ().CombineMask (ifAddr.GetMask ())   )
             {
               NS_LOG_LOGIC ("Ipv4L3Protocol::Send case 2:  subnet directed bcast to " << ifAddr.GetLocal ());
-              ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, mayFragment);
+              ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, tos, mayFragment);
               Ptr<Packet> packetCopy = packet->Copy ();
               m_sendOutgoingTrace (ipHeader, packetCopy, ifaceIndex);
               packetCopy->AddHeader (ipHeader);
@@ -626,7 +630,7 @@ Ipv4L3Protocol::Send (Ptr<Packet> packet,
   if (route && route->GetGateway () != Ipv4Address ())
     {
       NS_LOG_LOGIC ("Ipv4L3Protocol::Send case 3:  passed in with route");
-      ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, mayFragment);
+      ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, tos, mayFragment);
       int32_t interface = GetInterfaceForDevice (route->GetOutputDevice ());
       m_sendOutgoingTrace (ipHeader, packet, interface);
       SendRealOut (route, packet->Copy (), ipHeader);
@@ -645,7 +649,7 @@ Ipv4L3Protocol::Send (Ptr<Packet> packet,
   NS_LOG_LOGIC ("Ipv4L3Protocol::Send case 5:  passed in with no route " << destination);
   Socket::SocketErrno errno_; 
   Ptr<NetDevice> oif (0); // unused for now
-  ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, mayFragment);
+  ipHeader = BuildHeader (source, destination, protocol, packet->GetSize (), ttl, tos, mayFragment);
   Ptr<Ipv4Route> newRoute;
   if (m_routingProtocol != 0)
     {
@@ -678,6 +682,7 @@ Ipv4L3Protocol::BuildHeader (
   uint8_t protocol,
   uint16_t payloadSize,
   uint8_t ttl,
+  uint8_t tos,
   bool mayFragment)
 {
   NS_LOG_FUNCTION (this << source << destination << (uint16_t)protocol << payloadSize << (uint16_t)ttl << mayFragment);
@@ -687,6 +692,7 @@ Ipv4L3Protocol::BuildHeader (
   ipHeader.SetProtocol (protocol);
   ipHeader.SetPayloadSize (payloadSize);
   ipHeader.SetTtl (ttl);
+  ipHeader.SetTos (tos);
   if (mayFragment == true)
     {
       ipHeader.SetMayFragment ();
@@ -713,7 +719,6 @@ Ipv4L3Protocol::SendRealOut (Ptr<Ipv4Route> route,
                              Ipv4Header const &ipHeader)
 {
   NS_LOG_FUNCTION (this << packet << &ipHeader);
-
   if (route == 0)
     {
       NS_LOG_WARN ("No route to host.  Drop.");
